@@ -22,9 +22,6 @@ var (
 	counterWithCachedLabels = counterWithLabels.WithLabelValues("value1", "value2")
 )
 
-func init() {
-	prometheus.MustRegister(counter)
-}
 func BenchmarkPrometheusCounter(b *testing.B) {
 	for b.Loop() {
 		counter.Inc()
