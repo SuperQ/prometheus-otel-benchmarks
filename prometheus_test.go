@@ -46,3 +46,43 @@ func BenchmarkPrometheusCounterWithCachedLabelsParallel(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkPrometheusHistogramParallel(b *testing.B) {
+	histogram := prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "test_histogram",
+		Help:    "A test histogram",
+		Buckets: prometheus.DefBuckets,
+	})
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			histogram.Observe(simulateObserve(b.N))
+		}
+	})
+}
+
+func BenchmarkPrometheusHistogramWithLabelsParallel(b *testing.B) {
+	histogramWithLabels := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "test_histogram_with_labels",
+		Help: "A test histogram with labels",
+	}, []string{"label1", "label2"})
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			histogramWithLabels.WithLabelValues("value1", "value2").Observe(simulateObserve(b.N))
+		}
+	})
+}
+
+func BenchmarkPrometheusHistogramWithCachedLabelsParallel(b *testing.B) {
+	histogramWithCachedLabels := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "test_histogram_with_labels",
+		Help: "A test histogram with labels",
+	}, []string{"label1", "label2"}).WithLabelValues("value1", "value2")
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			histogramWithCachedLabels.Observe(simulateObserve(b.N))
+		}
+	})
+}
