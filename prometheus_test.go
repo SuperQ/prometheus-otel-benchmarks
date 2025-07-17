@@ -8,39 +8,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	counter = prometheus.NewCounter(prometheus.CounterOpts{
+func BenchmarkPrometheusCounterParallel(b *testing.B) {
+	counter := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "test_counter",
 		Help: "A test counter",
 	})
 
-	counterWithLabels = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "test_counter_with_labels",
-		Help: "A test counter with labels",
-	}, []string{"label1", "label2"})
-
-	counterWithCachedLabels = counterWithLabels.WithLabelValues("value1", "value2")
-)
-
-func BenchmarkPrometheusCounter(b *testing.B) {
-	for b.Loop() {
-		counter.Inc()
-	}
-}
-
-func BenchmarkPrometheusCounterWithLabels(b *testing.B) {
-	for b.Loop() {
-		counterWithLabels.WithLabelValues("value1", "value2").Inc()
-	}
-}
-
-func BenchmarkPrometheusCounterWithCachedLabels(b *testing.B) {
-	for b.Loop() {
-		counterWithCachedLabels.Inc()
-	}
-}
-
-func BenchmarkPrometheusCounterParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			counter.Inc()
@@ -49,6 +22,11 @@ func BenchmarkPrometheusCounterParallel(b *testing.B) {
 }
 
 func BenchmarkPrometheusCounterWithLabelsParallel(b *testing.B) {
+	counterWithLabels := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "test_counter",
+		Help: "A test counter",
+	}, []string{"label1", "label2"})
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			counterWithLabels.WithLabelValues("value1", "value2").Inc()
@@ -57,6 +35,11 @@ func BenchmarkPrometheusCounterWithLabelsParallel(b *testing.B) {
 }
 
 func BenchmarkPrometheusCounterWithCachedLabelsParallel(b *testing.B) {
+	counterWithCachedLabels := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "test_counter",
+		Help: "A test counter",
+	}, []string{"label1", "label2"}).WithLabelValues("value1", "value2")
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			counterWithCachedLabels.Inc()

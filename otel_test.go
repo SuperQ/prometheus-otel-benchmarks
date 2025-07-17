@@ -13,17 +13,8 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
-var (
-	otelCounter      metric.Int64Counter
-	ctx              = context.Background()
-	cachedAttributes = attribute.NewSet(
-		attribute.String("label1", "value1"),
-		attribute.String("label2", "value2"),
-	)
-)
-
 func init() {
-	otlpMetricExporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL("http://localhost:9090/api/v1/otlp/v1/metrics"))
+	otlpMetricExporter, err := otlpmetrichttp.New(context.Background(), otlpmetrichttp.WithEndpointURL("http://localhost:9090/api/v1/otlp/v1/metrics"))
 	if err != nil {
 		log.Fatalf("Failed to create OTLP metric exporter: %v", err)
 	}
@@ -33,35 +24,22 @@ func init() {
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(otlpMetricExporter, sdkmetric.WithInterval(time.Hour))),
 	)
 	otel.SetMeterProvider(meterProvider)
-	meter := otel.Meter("benchmark")
+}
 
-	otelCounter, err = meter.Int64Counter("test_counter",
+func getOTelCounter() metric.Int64Counter {
+	meter := otel.Meter("benchmark")
+	otelCounter, err := meter.Int64Counter("test_counter",
 		metric.WithDescription("A test counter"))
 	if err != nil {
 		panic(err)
 	}
-}
-
-func BenchmarkOtelCounter(b *testing.B) {
-	for b.Loop() {
-		otelCounter.Add(ctx, 1)
-	}
-}
-
-func BenchmarkOtelCounterWithAttributes(b *testing.B) {
-	for b.Loop() {
-		otelCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("label1", "value1"),
-			attribute.String("label2", "value2")))
-	}
-}
-
-func BenchmarkOtelCounterWithCachedAttributes(b *testing.B) {
-	for b.Loop() {
-		otelCounter.Add(ctx, 1, metric.WithAttributeSet(cachedAttributes))
-	}
+	return otelCounter
 }
 
 func BenchmarkOtelCounterParallel(b *testing.B) {
+	ctx := b.Context()
+	otelCounter := getOTelCounter()
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			otelCounter.Add(ctx, 1)
@@ -70,6 +48,9 @@ func BenchmarkOtelCounterParallel(b *testing.B) {
 }
 
 func BenchmarkOtelCounterWithAttributesParallel(b *testing.B) {
+	ctx := b.Context()
+	otelCounter := getOTelCounter()
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			otelCounter.Add(ctx, 1, metric.WithAttributes(
@@ -81,9 +62,16 @@ func BenchmarkOtelCounterWithAttributesParallel(b *testing.B) {
 }
 
 func BenchmarkOtelCounterWithCachedAttributesParallel(b *testing.B) {
+	ctx := b.Context()
+	otelCounter := getOTelCounter()
+	cachedAttributes := metric.WithAttributeSet(attribute.NewSet(
+		attribute.String("label1", "value1"),
+		attribute.String("label2", "value2"),
+	))
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			otelCounter.Add(ctx, 1, metric.WithAttributeSet(cachedAttributes))
+			otelCounter.Add(ctx, 1, cachedAttributes)
 		}
 	})
 }
